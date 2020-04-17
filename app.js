@@ -16,62 +16,10 @@ for (let i = 0; i < logFile.length; i++) {
   // The only parameter passed through the .match() method is a REGEX
   logFile[i] = logFile[i].match(/(?:[^\s"]+|"[^"]*")+/g);
 }
+console.log(logFile);
 
 // Step 2.
-// for(let i = 0; i < logFile.length; i++) {
-//   Reader.open('./GeoLite2_City/GeoLite2-City.mmdb')
-//     .then(reader => {
-//       const response = reader.city(logFile[i][0]);
 
-//       let country = response.country.names.en;
-//       let postalCode = response.postal.code;
-//       let state = '';
-
-//       if(postalCode) {
-//         state = zipcodes.lookup(postalCode).state;
-//       } else {
-//         state = 'N/A';
-//       }
-
-//       logFile[i].push(state);
-//     })
-//     .catch(err => console.error(err.message));
-// }
-
-async function addStateAndCountry(array) {
-  let result = [];
-  for(let i = 0; i < array.length; i++) {
-    let reader = await Reader.open('./GeoLite2_City/GeoLite2-City.mmdb');
-
-    let response = reader.city(array[i][0]);
-
-    let country = response.country.names.en;
-    let postalCode = response.postal.code;
-    let state = '';
-   
-    if(postalCode) {
-      state = zipcodes.lookup(postalCode).state;
-    } else {
-      state = 'N/A';
-    }
-
-    result.push(state, country);
-  } 
-}
-
-// addStateAndCountry(logFile);
-
-
-let promiseArray = [];
-for(let i = 0; i < logFile.length; i++) {
-  promiseArray.push(getData(logFile[i][0]));
-}
-
-Promise.all(promiseArray).then(data => {
-  console.log(data);
-});
-
- 
 async function getData(ipAddress) {
   let reader = await Reader.open('./GeoLite2_city/GeoLite2-City.mmdb');
 
@@ -90,25 +38,76 @@ async function getData(ipAddress) {
   return [state, country];
 }
 
+function createPromiseArray(array) {
+  let promiseArray = [];
+  for(let i = 0; i < array.length; i++) {
+    promiseArray.push(getData(logFile[i][0]));
+  }
 
-// logFile.forEach(async entry => {
-//   try {
-//     let reader = await Reader.open('./GeoLite2_City/GeoLite2-City.mmdb');
+  return promiseArray;
+}
 
-//     let response = reader.city(entry[0]);
+let promiseArray = createPromiseArray(logFile);
 
-//     let country = response.country.names.en;
-//     let postalCode = response.postal.code;
-//     let state = '';
-   
-//     if(postalCode) {
-//       state = zipcodes.lookup(postalCode).state;
-//     } else {
-//       state = 'N/A';
-//     }
+function returnData(promiseArray) {
+  return Promise.all(promiseArray)
+    .then(data => {
+      console.log(data); // THIS WORKS!!
+      return data;
+    });
+} 
 
-//     entry.push(state, country);
-//   } catch(err) {
-//     console.error(err.message);
-//   }
-// });
+let results = returnData(promiseArray);
+console.log(results);
+console.log(returnData(promiseArray));
+
+
+/* SAMPLE INPUT:
+[ 
+  [ '207.114.153.6',
+    '-',
+    '-',
+    '[10/Jun/2015:18:14:56',
+    '+0000]',
+    '"GET /favicon.ico HTTP/1.1"',
+    '200',
+    '0',
+    '"http://www.gobankingrates.com/banking/find-cds-now/"',
+    '"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36"'],
+  [ '74.143.105.130',
+    '-',
+    '-',
+    '[10/Jun/2015:18:15:00',
+    '+0000]',
+    '"GET /personal-finance/first-thing-should-social-security-check/ HTTP/1.1"',
+    '200',
+    '17842',
+    '"http://www.gobankingrates.com/personal-finance/become-millionaire-using-just-401k/"',
+    '"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko"']
+]
+*/
+
+
+/* Expected results: 
+  [ 
+    [ 'CA', 'United States' ],
+    [ 'IN', 'United States' ],
+    [ 'N/A', 'Norway' ],
+    [ 'N/A', 'United States' ],
+    [ 'IN', 'United States' ],
+    [ 'IN', 'United States' ],
+    [ 'N/A', 'China' ] 
+  ]
+*/
+
+
+// let promiseArray = [];
+// for(let i = 0; i < logFile.length; i++) {
+//   promiseArray.push(getData(logFile[i][0]));
+// }
+
+// let results = [];
+// function resolve(promiseArray) {
+//   return Promise.all(promiseArray).then(data => {return data;})
+//     .then(data => results = data);
+// } 
