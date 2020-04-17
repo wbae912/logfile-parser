@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "geoip-lite": "^1.4.1"
+    "@maxmind/geoip2-node": "^1.4.0",
+    "zipcodes": "^8.0.0"
   }
 }
