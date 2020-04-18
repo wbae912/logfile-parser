@@ -19,16 +19,14 @@ function resolveStateAndCountry(ipAddress) {
 
     const response = reader.city(ipAddress);
 
-    let country = (response.country.names) ? response.country.names.en : response.country.isoCode;
+    let country = (response.country.names) ? response.country.names.en : response.country.isoCode || 'N/A';
     let postalCode = response.postal.code;
-    let state = '';
+    let state = 'N/A';
  
     // NOTE: response object also included the "state" in response.subdivisions[0].names 
     // However, decided to use zipcodes package to get state instead...some state names were not listed in the response and foreign countries had city value instead
     if(postalCode && zipcodes.lookup(postalCode)) {
       state = zipcodes.lookup(postalCode).state;
-    } else {
-      state = 'N/A';
     }
 
     return [state, country];
@@ -94,6 +92,7 @@ function combineDate(dataArray) {
 
 // NOTE: Added headers to .csv file
 // However, unclear about 2 header fields as denoted by the (?)s below (i.e. user(?) & response_time(?))
+// Maintained same format as .txt file...Therefore, .csv displays some data points as """[data]""" so when opened in Excel, for example, it shows as "[data]" which mirrors the .txt file
 function writeCsv(dataArray) {
   try {
     const ws = fs.createWriteStream('data.csv');
@@ -119,7 +118,7 @@ function main() {
   addNewColumns();
   combineDate(logFile);
   writeCsv(logFile);
-  updateTxtFile(logFile);
+  // updateTxtFile(logFile); // Optional to call method
 }
 
 main();

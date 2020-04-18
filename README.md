@@ -1,11 +1,11 @@
 # Access Log Parser
 
 ## Description
-This Node.js application is intended to read an access log file, append fields to each entry (state, country, browser, device), and output a .csv file.
+This Node.js application is intended to read an access log file, append fields to each entry (state, country, browser, device), and output a .csv file. For purposes of demonstration, ```data.txt``` was the sample input used and ```data.csv``` is the output resulting from running the code.
 
 ## Getting Started
 * Clone the repository and install dependencies using ```npm install```
-* Run ```node app.js``` in the CLI in order to run the application (output data.txt to data.csv)
+* Run ```node app.js``` in the CLI in order to run the application (outputs data.txt to data.csv)
 
 ## Dependencies Used (installed using npm)
 * **@maxmind/geoip2-node**: MaxMind GeoIP2 Free Database used to obtain geolocation, such as *country* from an IP Address
