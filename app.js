@@ -4,39 +4,37 @@ const zipcodes = require('zipcodes');
 const userAgent = require('user-agent-parse');
 const fastcsv = require('fast-csv');
 
-// Step 1.
 
-// This is reading our .txt file which houses the access log data and splitting on every new line
 let logFile = fs.readFileSync('data.txt', 'utf8').split('\n');
 
-// We iterate over the array to create a 2D array
-// Each element in the outer array will be a line of data
-// In the inner arrays, we split the string at every space, unless it is inside of quotations
-// This does not matter for the DATE in brackets because when joined into a string again, it will be in proper format...Additionally, we are not using DATE field to parse any additional data
+// Splitting into 2D array. Each inner-array is split by space (delimiter) except if spaces exist within quotation marks("")
 for (let i = 0; i < logFile.length; i++) {
-  // String.prototype.match() method searches a string for a match agaist a REGEX and returns the matchas an array
-  // The only parameter passed through the .match() method is a REGEX
   logFile[i] = logFile[i].match(/(?:[^\s"]+|"[^"]*")+/g);
 }
 
-// Step 2. 
 function resolveStateAndCountry(ipAddress) {
-  const dbBuffer = fs.readFileSync('./GeoLite2_City/GeoLite2-City.mmdb');
-  const reader = Reader.openBuffer(dbBuffer);
+  try {
+    const dbBuffer = fs.readFileSync('./GeoLite2_City/GeoLite2-City.mmdb');
+    const reader = Reader.openBuffer(dbBuffer);
 
-  const response = reader.city(ipAddress);
+    const response = reader.city(ipAddress);
 
-  let country = response.country.names.en;
-  let postalCode = response.postal.code;
-  let state = '';
+    let country = (response.country.names) ? response.country.names.en : response.country.isoCode;
+    let postalCode = response.postal.code;
+    let state = '';
  
-  if(postalCode) {
-    state = zipcodes.lookup(postalCode).state;
-  } else {
-    state = 'N/A';
-  }
+    // NOTE: response object also included the "state" in response.subdivisions[0].names 
+    // However, decided to use zipcodes package to get state instead...some state names were not listed in the response and foreign countries had city value instead
+    if(postalCode && zipcodes.lookup(postalCode)) {
+      state = zipcodes.lookup(postalCode).state;
+    } else {
+      state = 'N/A';
+    }
 
-  return [state, country];
+    return [state, country];
+  } catch(error) {
+    console.error(error.message);
+  }
 }
 
 function concatenateLocation(dataArray) {
@@ -85,6 +83,8 @@ function addNewColumns() {
   concatenateUserAgent(logFile);
 }
 
+// When splitting the log file into a 2D array, it split a space within the date fields because the space was within brackets (i.e. [10/Jun/2015:18:14:56 +0000] => [10/Jun/2015:18:14:56, +0000])
+// This function serves to combine the date into one element as originally intended
 function combineDate(dataArray) {
   for(let i = 0; i < dataArray.length; i++) {
     dataArray[i][3] += ` ${dataArray[i][4]}`;
@@ -92,6 +92,8 @@ function combineDate(dataArray) {
   }
 }
 
+// NOTE: Added headers to .csv file
+// However, unclear about 2 header fields as denoted by the (?)s below (i.e. user(?) & response_time(?))
 function writeCsv(dataArray) {
   try {
     const ws = fs.createWriteStream('data.csv');
@@ -103,6 +105,7 @@ function writeCsv(dataArray) {
   }
 }
 
+// Optional function created to overwrite the existing .txt file with data containing the new fields (state, country, browser, device)
 function updateTxtFile(dataArray) {
   for(let i = 0; i < dataArray.length; i++) {
     dataArray[i] = dataArray[i].join(' ');
