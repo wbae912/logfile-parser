@@ -2,6 +2,7 @@ const fs = require('fs');
 const Reader = require('@maxmind/geoip2-node').Reader;
 const zipcodes = require('zipcodes');
 const userAgent = require('user-agent-parse');
+const fastcsv = require('fast-csv');
 
 // Step 1.
 
@@ -25,14 +26,14 @@ function resolveStateAndCountry(ipAddress) {
 
   const response = reader.city(ipAddress);
 
-  let country = `"${response.country.names.en}"`;
+  let country = response.country.names.en;
   let postalCode = response.postal.code;
   let state = '';
  
   if(postalCode) {
-    state = `"${zipcodes.lookup(postalCode).state}"`;
+    state = zipcodes.lookup(postalCode).state;
   } else {
-    state = '"N/A"';
+    state = 'N/A';
   }
 
   return [state, country];
@@ -52,14 +53,14 @@ function concatenateLocation(dataArray) {
 function parseUserAgent(userAgentString) {
   let agentObject = userAgent.parse(userAgentString);
 
-  let browser = `"${agentObject.name}"`;
-  let device = `"${agentObject.device_type}"`;
+  let browser = agentObject.name;
+  let device = agentObject.device_type;
 
-  if(browser === '""') {
-    browser = '"N/A"';
+  if(!browser) {
+    browser = 'N/A';
   }
-  if(device === '""') {
-    device = '"N/A"';
+  if(!device) {
+    device = 'N/A';
   }
   
   return [browser, device];
@@ -84,9 +85,24 @@ function addNewColumns() {
   concatenateUserAgent(logFile);
 }
 
+function combineDate(dataArray) {
+  for(let i = 0; i < dataArray.length; i++) {
+    dataArray[i][3] += ` ${dataArray[i][4]}`;
+    dataArray[i].splice(4,1);
+  }
+}
 
+function writeCsv(dataArray) {
+  try {
+    const ws = fs.createWriteStream('data.csv');
+    fastcsv
+      .write(dataArray, { headers: ['ip_address', '-', 'user(?)', 'date', 'method', 'status', 'response_time(?)', 'url', 'user_agent', 'state', 'country', 'browser', 'device'] })
+      .pipe(ws);
+  } catch(error) {
+    console.error(error);
+  }
+}
 
-// Step 3 (Overwrite existing data.txt file with new concatenated data fields)
 function updateTxtFile(dataArray) {
   for(let i = 0; i < dataArray.length; i++) {
     dataArray[i] = dataArray[i].join(' ');
@@ -96,17 +112,10 @@ function updateTxtFile(dataArray) {
   fs.writeFileSync('data.txt', dataArray, {encoding:'utf8'});
 }
 
-
-
-// Step 4 (Convert data.txt file into a .csv file)
-
-
-
-
-
-
 function main() {
   addNewColumns();
+  combineDate(logFile);
+  writeCsv(logFile);
   updateTxtFile(logFile);
 }
 
