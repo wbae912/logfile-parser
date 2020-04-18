@@ -25,14 +25,14 @@ function resolveStateAndCountry(ipAddress) {
 
   const response = reader.city(ipAddress);
 
-  let country = response.country.names.en;
+  let country = (response.country.names.en === 'United States') ? '"USA"' : `"${response.country.names.en}"`;
   let postalCode = response.postal.code;
   let state = '';
  
   if(postalCode) {
-    state = zipcodes.lookup(postalCode).state;
+    state = `"${zipcodes.lookup(postalCode).state}"`;
   } else {
-    state = 'N/A';
+    state = '"N/A"';
   }
 
   return [state, country];
@@ -52,14 +52,14 @@ function concatenateLocation(dataArray) {
 function parseUserAgent(userAgentString) {
   let agentObject = userAgent.parse(userAgentString);
 
-  let browser = agentObject.name;
-  let device = agentObject.device_type;
+  let browser = `"${agentObject.name}"`;
+  let device = `"${agentObject.device_type}"`;
 
-  if(!browser) {
-    browser = 'N/A';
+  if(browser === '""') {
+    browser = '"N/A"';
   }
-  if(!device) {
-    device = 'N/A';
+  if(device === '""') {
+    device = '"N/A"';
   }
   
   return [browser, device];
@@ -84,4 +84,22 @@ function addNewColumns() {
   concatenateUserAgent(logFile);
 }
 
-// addNewColumns();
+addNewColumns();
+
+
+
+// Step 3 (Overwrite existing data.txt file with new concatenated info)
+function updateTxtFile(dataArray) {
+  for(let i = 0; i < dataArray.length; i++) {
+    dataArray[i] = dataArray[i].join(' ');
+  }
+
+  dataArray = dataArray.join('\n');
+  fs.writeFileSync('data.txt', dataArray, {encoding:'utf8'});
+}
+
+updateTxtFile(logFile);
+
+
+
+// Step 4 (Convert data.txt file into a .csv file)
