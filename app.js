@@ -1,6 +1,7 @@
 const fs = require('fs');
 const Reader = require('@maxmind/geoip2-node').Reader;
 const zipcodes = require('zipcodes');
+const userAgent = require('user-agent-parse');
 
 // Step 1.
 
@@ -16,14 +17,13 @@ for (let i = 0; i < logFile.length; i++) {
   // The only parameter passed through the .match() method is a REGEX
   logFile[i] = logFile[i].match(/(?:[^\s"]+|"[^"]*")+/g);
 }
-console.log(logFile);
 
-// Step 2.
+// Step 2. 
+function resolveStateAndCountry(ipAddress) {
+  const dbBuffer = fs.readFileSync('./GeoLite2_City/GeoLite2-City.mmdb');
+  const reader = Reader.openBuffer(dbBuffer);
 
-async function getData(ipAddress) {
-  let reader = await Reader.open('./GeoLite2_city/GeoLite2-City.mmdb');
-
-  let response = reader.city(ipAddress);
+  const response = reader.city(ipAddress);
 
   let country = response.country.names.en;
   let postalCode = response.postal.code;
@@ -38,76 +38,50 @@ async function getData(ipAddress) {
   return [state, country];
 }
 
-function createPromiseArray(array) {
-  let promiseArray = [];
-  for(let i = 0; i < array.length; i++) {
-    promiseArray.push(getData(logFile[i][0]));
+function concatenateLocation(dataArray) {
+  let locationArray = [];
+  for(let i = 0; i < dataArray.length; i++) {
+    locationArray.push(resolveStateAndCountry(dataArray[i][0]));
   }
 
-  return promiseArray;
+  for(let j = 0; j < dataArray.length; j++) {
+    dataArray[j] = dataArray[j].concat(locationArray[j]);
+  }
 }
 
-let promiseArray = createPromiseArray(logFile);
+function parseUserAgent(userAgentString) {
+  let agentObject = userAgent.parse(userAgentString);
 
-function returnData(promiseArray) {
-  return Promise.all(promiseArray)
-    .then(data => {
-      console.log(data); // THIS WORKS!!
-      return data;
-    });
-} 
+  let browser = agentObject.name;
+  let device = agentObject.device_type;
 
-let results = returnData(promiseArray);
-console.log(results);
-console.log(returnData(promiseArray));
+  if(!browser) {
+    browser = 'N/A';
+  }
+  if(!device) {
+    device = 'N/A';
+  }
+  
+  return [browser, device];
+}
 
+function concatenateUserAgent(dataArray) {
+  let agentArray = [];
 
-/* SAMPLE INPUT:
-[ 
-  [ '207.114.153.6',
-    '-',
-    '-',
-    '[10/Jun/2015:18:14:56',
-    '+0000]',
-    '"GET /favicon.ico HTTP/1.1"',
-    '200',
-    '0',
-    '"http://www.gobankingrates.com/banking/find-cds-now/"',
-    '"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.81 Safari/537.36"'],
-  [ '74.143.105.130',
-    '-',
-    '-',
-    '[10/Jun/2015:18:15:00',
-    '+0000]',
-    '"GET /personal-finance/first-thing-should-social-security-check/ HTTP/1.1"',
-    '200',
-    '17842',
-    '"http://www.gobankingrates.com/personal-finance/become-millionaire-using-just-401k/"',
-    '"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko"']
-]
-*/
+  for(let i = 0; i < dataArray.length; i++) {
+    let agentIndex = 9;
+    let agentString = dataArray[i][agentIndex];
+    agentArray.push(parseUserAgent(agentString));
+  }
 
+  for(let j = 0; j < dataArray.length; j++) {
+    dataArray[j] = dataArray[j].concat(agentArray[j]);
+  }
+}
 
-/* Expected results: 
-  [ 
-    [ 'CA', 'United States' ],
-    [ 'IN', 'United States' ],
-    [ 'N/A', 'Norway' ],
-    [ 'N/A', 'United States' ],
-    [ 'IN', 'United States' ],
-    [ 'IN', 'United States' ],
-    [ 'N/A', 'China' ] 
-  ]
-*/
+function addNewColumns() {
+  concatenateLocation(logFile);
+  concatenateUserAgent(logFile);
+}
 
-
-// let promiseArray = [];
-// for(let i = 0; i < logFile.length; i++) {
-//   promiseArray.push(getData(logFile[i][0]));
-// }
-
-// let results = [];
-// function resolve(promiseArray) {
-//   return Promise.all(promiseArray).then(data => {return data;})
-//     .then(data => results = data);
-// } 
+// addNewColumns();
