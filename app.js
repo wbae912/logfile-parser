@@ -25,7 +25,7 @@ function resolveStateAndCountry(ipAddress) {
 
   const response = reader.city(ipAddress);
 
-  let country = (response.country.names.en === 'United States') ? '"USA"' : `"${response.country.names.en}"`;
+  let country = `"${response.country.names.en}"`;
   let postalCode = response.postal.code;
   let state = '';
  
@@ -84,11 +84,9 @@ function addNewColumns() {
   concatenateUserAgent(logFile);
 }
 
-addNewColumns();
 
 
-
-// Step 3 (Overwrite existing data.txt file with new concatenated info)
+// Step 3 (Overwrite existing data.txt file with new concatenated data fields)
 function updateTxtFile(dataArray) {
   for(let i = 0; i < dataArray.length; i++) {
     dataArray[i] = dataArray[i].join(' ');
@@ -98,8 +96,18 @@ function updateTxtFile(dataArray) {
   fs.writeFileSync('data.txt', dataArray, {encoding:'utf8'});
 }
 
-updateTxtFile(logFile);
-
 
 
 // Step 4 (Convert data.txt file into a .csv file)
+
+
+
+
+
+
+function main() {
+  addNewColumns();
+  updateTxtFile(logFile);
+}
+
+main();
